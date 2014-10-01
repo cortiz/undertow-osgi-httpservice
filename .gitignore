@@ -1,0 +1,21 @@
+# Created by .gitignore support plugin (hsz.mobi)
+#Maven
+target/
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
+*.jar
+*.war
+*.ear
+*.iml
+.idea
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
