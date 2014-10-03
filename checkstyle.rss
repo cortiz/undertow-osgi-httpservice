@@ -3,7 +3,7 @@
 <rss version="0.91">
   <channel>
     <title>Undertow OSGI Http Service - Checkstyle report</title>
-    <link>http://cortiz.github.io</link>
+    <link>http://cortiz.github.io/undertow-osgi-httpservice/</link>
     <description>Undertow OSGI Http Service - Checkstyle report</description>
     <language>en-us</language>
     <copyright>&#169;2014</copyright>
@@ -13,9 +13,9 @@
              Warnings: 0,
              Infos: 0
       </title>
-            <link>http://cortiz.github.io/checkstyle.html</link>
+            <link>http://cortiz.github.io/undertow-osgi-httpservice//checkstyle.html</link>
       <description>
-        <p>Click <a href="http://cortiz.github.io/checkstyle.html">here</a> for the full Checkstyle report.</p>
+        <p>Click <a href="http://cortiz.github.io/undertow-osgi-httpservice//checkstyle.html">here</a> for the full Checkstyle report.</p>
 
         <table summary="Files" boder="1">
           <thead>
@@ -29,7 +29,7 @@
           <tbody>
                           <tr>
                 <td>
-                  <a href="http://cortiz.github.io/checkstyle.html#com.jmpeax.osgi.undertow.http.UndertowHttpServiceActivator.java">com/jmpeax/osgi/undertow/http/UndertowHttpServiceActivator.java</a>
+                  <a href="http://cortiz.github.io/undertow-osgi-httpservice//checkstyle.html#com.jmpeax.osgi.undertow.http.UndertowHttpServiceActivator.java">com/jmpeax/osgi/undertow/http/UndertowHttpServiceActivator.java</a>
                 </td>
                 <td>
                   0
