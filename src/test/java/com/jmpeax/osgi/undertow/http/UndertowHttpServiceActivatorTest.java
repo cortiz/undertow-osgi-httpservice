@@ -17,16 +17,53 @@
 
 package com.jmpeax.osgi.undertow.http;
 
+import io.undertow.Undertow;
+import io.undertow.server.HttpHandler;
+import io.undertow.server.HttpServerExchange;
+import io.undertow.server.handlers.PathHandler;
+import io.undertow.servlet.Servlets;
+import io.undertow.servlet.api.DeploymentInfo;
+import io.undertow.servlet.api.DeploymentManager;
+import io.undertow.util.Headers;
 import org.mockito.Mockito;
 import org.osgi.framework.BundleContext;
 import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.Test;
 
-import static org.testng.Assert.*;
+import javax.servlet.ServletException;
+import java.io.IOException;
 
 public class UndertowHttpServiceActivatorTest {
 
     private BundleContext dummyBundleContext;
+
+    public static void main(String[] args) throws IOException, ServletException {
+        PathHandler pathHandler = new PathHandler();
+        pathHandler.addExactPath("/hello", new HttpHandler() {
+            @Override
+            public void handleRequest(final HttpServerExchange exchange) throws Exception {
+                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+                exchange.getResponseSender().send("Hello World");
+            }
+        });
+        Undertow server = Undertow.builder().addHttpListener(9090, "localhost")
+                .setHandler(pathHandler).build();
+        server.start();
+        pathHandler.addExactPath("/bye", new HttpHandler() {
+            @Override
+            public void handleRequest(final HttpServerExchange exchange) throws Exception {
+                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+                exchange.getResponseSender().send("bye World");
+            }
+        });
+        DeploymentInfo servletBuilder = Servlets.deployment().addServlet(Servlets.servlet("sample", SampleServlet
+                .class).addMapping("/*")).setDeploymentName("Test").setContextPath("/servlets").setClassLoader
+                (UndertowHttpServiceActivatorTest.class.getClassLoader());
+        final DeploymentManager manager = Servlets.defaultContainer().addDeployment(servletBuilder);
+        manager.deploy();
+        pathHandler.addExactPath("/servlets", manager.start());
+
+    }
 
     @BeforeMethod
     public void setUp() throws Exception {
@@ -35,11 +72,12 @@ public class UndertowHttpServiceActivatorTest {
 
     @Test
     public void testStart() throws Exception {
-        new UndertowHttpServiceActivator().start(dummyBundleContext);
+        dummyBundleContext.notify();
     }
 
     @Test
     public void testStop() throws Exception {
-        new UndertowHttpServiceActivator().stop(dummyBundleContext);
+        // new UndertowHttpServiceActivator().stop(dummyBundleContext);
     }
+
 }

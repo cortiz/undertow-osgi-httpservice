@@ -16,7 +16,7 @@
  */
 
 /**
- * Main implementation package.<b>Classes that are here are never intended to be use outside</b><br/>
+ * Main implementation package.<b>Classes that are here are never intended to be use outside</b>
  * this package is mark as private in the bundle manifest.
  */
 package com.jmpeax.osgi.undertow.http.impl;
