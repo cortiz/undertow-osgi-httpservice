@@ -1,1 +1,3 @@
+com.jmpeax.osgi.undertow.http.api
+com.jmpeax.osgi.undertow.http.impl
 com.jmpeax.osgi.undertow.http

@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../.resources/report.css" type="text/css"/><link rel="shortcut icon" href="../.resources/report.gif" type="image/gif"/><title>UndertowHttpServer.java</title><link rel="stylesheet" href="../.resources/prettify.css" type="text/css"/><script type="text/javascript" src="../.resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../.sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">Undertow OSGI Http Service</a> &gt; <a href="index.source.html" class="el_package">com.jmpeax.osgi.undertow.http.impl</a> &gt; <span class="el_source">UndertowHttpServer.java</span></div><h1>UndertowHttpServer.java</h1><pre class="source lang-java linenums">/*
+ * Copyright (C) 2007-2014 JMPEAX.
+ *
+ *     This program is free software: you can redistribute it and/or modify
+ *     it under the terms of the GNU General Public License as published by
+ *     the Free Software Foundation, either version 3 of the License, or
+ *     (at your option) any later version.
+ *
+ *     This program is distributed in the hope that it will be useful,
+ *     but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *     GNU General Public License for more details.
+ *
+ *     You should have received a copy of the GNU General Public License
+ *     along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.
+ */
+
+package com.jmpeax.osgi.undertow.http.impl;
+
+import io.undertow.Undertow;
+import io.undertow.server.handlers.PathHandler;
+import io.undertow.servlet.Servlets;
+import io.undertow.servlet.api.*;
+import io.undertow.servlet.util.ImmediateInstanceHandle;
+import org.osgi.framework.BundleException;
+import org.osgi.service.http.NamespaceException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.servlet.Servlet;
+import javax.servlet.ServletException;
+import java.util.Dictionary;
+import java.util.HashSet;
+import java.util.Set;
+
+/**
+ * Manages the undertow server, also is the one who does the actual load/unload of the servlets.
+ *
+ * @author Carlos Ortiz
+ * @since 1.0.0
+ */
+public class UndertowHttpServer {
+
+
+<span class="fc" id="L45">    private final Logger log = LoggerFactory.getLogger(UndertowHttpServer.class);</span>
+    protected Dictionary&lt;String, ?&gt; properties;
+    protected Undertow server;
+    protected PathHandler pathHandler;
+    protected Set&lt;String&gt; registeredPaths;
+
+<span class="fc" id="L51">    public UndertowHttpServer(Dictionary&lt;String, ?&gt; properties) {</span>
+<span class="fc" id="L52">        this.properties = properties;</span>
+<span class="fc" id="L53">        pathHandler = new PathHandler();</span>
+<span class="fc" id="L54">        registeredPaths = new HashSet&lt;&gt;();</span>
+<span class="fc" id="L55">    }</span>
+
+    public void startServer() throws BundleException {
+<span class="fc" id="L58">        Undertow.Builder serverBuilder = Undertow.builder();</span>
+        try {
+<span class="fc" id="L60">            int port = Integer.parseInt(properties.get(&quot;undertow.server.http.port&quot;).toString());</span>
+<span class="fc" id="L61">            String host = properties.get(&quot;undertow.server.http.host&quot;).toString();</span>
+<span class="fc" id="L62">            log.debug(&quot;Starting Http Listener {}:{}&quot;, host, port);</span>
+<span class="fc" id="L63">            serverBuilder.addHttpListener(port, host);</span>
+
+<span class="fc" id="L65">        } catch (NumberFormatException | NullPointerException ex) {</span>
+<span class="fc" id="L66">            log.error(&quot;Unable to start Http Server, missing configuration for host and port&quot;);</span>
+<span class="fc" id="L67">            log.debug(&quot;Reason:&quot;, ex);</span>
+<span class="fc" id="L68">            throw new BundleException(&quot;Unable to start Http service, configuration invalid!&quot;);</span>
+<span class="fc" id="L69">        }</span>
+<span class="fc" id="L70">        serverBuilder.setHandler(pathHandler);</span>
+<span class="fc" id="L71">        server = serverBuilder.build();</span>
+<span class="fc" id="L72">        server.start();</span>
+<span class="fc" id="L73">    }</span>
+
+
+    public void addServletHandler(final String url, final Servlet servlet, final Dictionary&lt;String, ?&gt; props) throws NamespaceException, ServletException {
+<span class="fc" id="L77">        log.debug(&quot;Adding {} to url {} with properties {}&quot;, servlet, url, props);</span>
+<span class="fc bfc" id="L78" title="All 2 branches covered.">        if (registeredPaths.contains(url)) {</span>
+<span class="fc" id="L79">            throw new NamespaceException(&quot;Url &quot; + url + &quot; already Exist&quot;);</span>
+        }
+<span class="fc" id="L81">        DeploymentInfo servletBuilder = initServetHandler(url, servlet.getClass().getClassLoader());</span>
+
+<span class="fc" id="L83">        final ServletInfo tobeAdd = Servlets.servlet(url, servlet.getClass(), new InstanceFactory&lt;Servlet&gt;() {</span>
+            // OSGi already provides the instance!
+            @Override
+            public InstanceHandle&lt;Servlet&gt; createInstance() throws InstantiationException {
+<span class="fc" id="L87">                return new ImmediateInstanceHandle&lt;Servlet&gt;(servlet);</span>
+            }
+        });
+<span class="fc" id="L90">        tobeAdd.addMapping(&quot;/*&quot;);</span>
+<span class="fc" id="L91">        servletBuilder.setContextPath(url);</span>
+<span class="fc" id="L92">        servletBuilder.setDeploymentName(&quot;TEST&quot;);</span>
+<span class="fc" id="L93">        servletBuilder.addServlet(tobeAdd);</span>
+<span class="fc" id="L94">        final DeploymentManager manager = Servlets.defaultContainer().addDeployment(servletBuilder);</span>
+<span class="fc" id="L95">        manager.deploy();</span>
+<span class="fc" id="L96">        pathHandler.addExactPath(url, manager.start());</span>
+<span class="fc" id="L97">        log.debug(&quot;Servlet {} was added&quot;, url);</span>
+<span class="fc" id="L98">        registeredPaths.add(url);</span>
+<span class="fc" id="L99">    }</span>
+
+    public void addServletHandler(final String url, final Class&lt;? extends Servlet&gt; servlet,
+                                  final Dictionary&lt;String, ?&gt; props) {
+<span class="nc" id="L103">        DeploymentInfo servletBuilder = initServetHandler(url, servlet.getClassLoader());</span>
+<span class="nc" id="L104">        Servlets.servlet(url, servlet);</span>
+<span class="nc" id="L105">    }</span>
+
+    protected DeploymentInfo initServetHandler(final String url, ClassLoader classloader) {
+<span class="fc" id="L108">        DeploymentInfo servletBuilder = Servlets.deployment();</span>
+<span class="fc" id="L109">        servletBuilder.setClassLoader(classloader);</span>
+<span class="fc" id="L110">        servletBuilder.setContextPath(url);</span>
+<span class="fc" id="L111">        return servletBuilder;</span>
+    }
+
+    public void removeHandler(final String path) {
+<span class="fc" id="L115">        pathHandler.removeExactPath(path);</span>
+<span class="fc" id="L116">        registeredPaths.remove(path);</span>
+<span class="fc" id="L117">        log.debug(&quot;{} was remove from server&quot;, path);</span>
+<span class="fc" id="L118">    }</span>
+
+    public void stopServer() {
+<span class="fc" id="L121">        log.info(&quot;Stopping Http Server&quot;);</span>
+<span class="fc" id="L122">        log.debug(&quot;Clearing all paths&quot;);</span>
+<span class="fc" id="L123">        pathHandler.clearPaths();</span>
+<span class="fc" id="L124">        log.debug(&quot;Stopping all Http/Ajp services&quot;);</span>
+<span class="fc" id="L125">        server.stop();</span>
+<span class="fc" id="L126">        log.info(&quot;Http Server was shutdown&quot;);</span>
+<span class="fc" id="L127">    }</span>
+
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.eclemma.org/jacoco">JaCoCo</a> 0.7.2.201409121644</span></div></body></html>
