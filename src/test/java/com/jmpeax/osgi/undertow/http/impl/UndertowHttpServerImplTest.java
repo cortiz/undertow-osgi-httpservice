@@ -18,6 +18,7 @@
 package com.jmpeax.osgi.undertow.http.impl;
 
 import com.jmpeax.osgi.undertow.http.SampleServlet;
+import com.jmpeax.osgi.undertow.http.api.UndertowOSGi;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -45,23 +46,25 @@ public class UndertowHttpServerImplTest {
 
 
     private Properties goodProperties;
-
+    private Properties servletDeployProperties;
     private HttpClient httpTestClient;
 
     @BeforeMethod()
     public void setUp() throws Exception {
         goodProperties = new Properties();
         goodProperties.load(getClass().getResourceAsStream("/undertow-defaults.properties"));
+        servletDeployProperties = new Properties();
+        servletDeployProperties.load(getClass().getResourceAsStream("/undertow-test-servlet-deploy.properties"));
         httpTestClient = HttpClientBuilder.create().build();
     }
 
-
     @Test
-    @SuppressWarnings({""})
     public void testDefaultProperties() {
         assertNotNull(goodProperties.getProperty("undertow.server.http.host"));
         assertNotNull(goodProperties.getProperty("undertow.server.http.port"));
         Integer.parseInt(goodProperties.getProperty("undertow.server.http.port"));
+        assertNotNull(servletDeployProperties.get(UndertowOSGi.CONTEXT_NAME));
+        assertNotNull(servletDeployProperties.get(UndertowOSGi.SERVLET_MAPPING));
     }
 
     @Test(dependsOnMethods = "testDefaultProperties")
@@ -91,7 +94,52 @@ public class UndertowHttpServerImplTest {
         testServer.stopServer();
     }
 
-    @Test(dependsOnMethods = "testSimpleRegister")
+
+    @Test(dependsOnMethods = "testStartServer")
+    public void testSimpleRegisterInternalCtr() throws Exception {
+        UndertowHttpServer testServer = new UndertowHttpServer((Dictionary) goodProperties);
+        testServer.startServer();
+        testServer.addServletHandler("/thisMustExist", SampleServlet.class, null);
+        final HttpResponse result = httpTestClient.execute(buildHttpRequest("/thisMustExist"));
+        assertEquals(result.getStatusLine().getStatusCode(), HttpServletResponse.SC_OK);
+        final InputStream in = result.getEntity().getContent();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        int ch;
+        while ((ch = in.read()) != -1)
+            out.write(ch);
+        final String str = new String(out.toByteArray(), Charset.forName(SampleServlet.ENCODING));
+        assertEquals(str, SampleServlet.SEND_TEXT);
+        assertEquals(result.getEntity().getContentType().getValue(), SampleServlet.CONTENT_TYPE);
+        testServer.stopServer();
+    }
+
+    @Test(dependsOnMethods = {"testStartServer","testSimpleRegister"})
+    public void testRegisterWithProperties() throws Exception {
+        UndertowHttpServer testServer = new UndertowHttpServer((Dictionary) goodProperties);
+        testServer.startServer();
+        testServer.addServletHandler("/simpleMapping", new SampleServlet(), (Dictionary)servletDeployProperties);
+        HttpResponse result = httpTestClient.execute(buildHttpRequest("/simpleMapping"));
+        assertEquals(result.getStatusLine().getStatusCode(), HttpServletResponse.SC_NOT_FOUND);
+        result = httpTestClient.execute(buildHttpRequest("/simpleMapping/Mapping.abc"));
+        assertEquals(result.getStatusLine().getStatusCode(), HttpServletResponse.SC_OK);
+        testServer.stopServer();
+    }
+
+    @Test(dependsOnMethods = {"testStartServer","testSimpleRegister"})
+    public void testRegisterWithPropertiesInternalCtr() throws Exception {
+        UndertowHttpServer testServer = new UndertowHttpServer((Dictionary) goodProperties);
+        testServer.startServer();
+        testServer.addServletHandler("/simpleMapping", SampleServlet.class, (Dictionary)servletDeployProperties);
+        HttpResponse result = httpTestClient.execute(buildHttpRequest("/simpleMapping"));
+        assertEquals(result.getStatusLine().getStatusCode(), HttpServletResponse.SC_NOT_FOUND);
+        result = httpTestClient.execute(buildHttpRequest("/simpleMapping/Mapping.abc"));
+        assertEquals(result.getStatusLine().getStatusCode(), HttpServletResponse.SC_OK);
+        testServer.stopServer();
+    }
+
+
+
+    @Test(dependsOnMethods = {"testRegisterWithProperties","testSimpleRegister"})
     public void testUnRegister() throws Exception {
         UndertowHttpServer testServer = new UndertowHttpServer((Dictionary) goodProperties);
         testServer.startServer();

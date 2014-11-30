@@ -67,6 +67,8 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
         <org.slf4j.version>1.7.7</org.slf4j.version>
         <github.global.server>cortiz.github</github.global.server>
+        <exam.version>4.3.0</exam.version>
+        <url.version>2.2.0</url.version>
     </properties>
 
     <dependencies>
@@ -97,25 +99,40 @@
             <groupId>org.ops4j.pax.tipi</groupId>
             <artifactId>org.ops4j.pax.tipi.xnio.nio</artifactId>
             <version>3.2.2.2</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.ops4j.pax.tipi</groupId>
             <artifactId>org.ops4j.pax.tipi.xnio.api</artifactId>
             <version>3.2.2.2</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.ops4j.pax.tipi</groupId>
             <artifactId>org.ops4j.pax.tipi.undertow.core</artifactId>
             <version>1.0.15.1</version>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
             <groupId>org.ops4j.pax.tipi</groupId>
             <artifactId>org.ops4j.pax.tipi.undertow.servlet</artifactId>
             <version>1.0.15.1</version>
+            <scope>provided</scope>
         </dependency>
-
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.1</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+            <version>4.0</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>org.testng</groupId>
             <artifactId>testng</artifactId>
@@ -146,12 +163,56 @@
             <version>4.3.5</version>
             <scope>test</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.ops4j.pax.exam</groupId>
+            <artifactId>pax-exam-container-karaf</artifactId>
+            <version>${exam.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.ops4j.pax.exam</groupId>
+            <artifactId>pax-exam-testng</artifactId>
+            <version>${exam.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.ops4j.pax.exam</groupId>
+            <artifactId>pax-exam-link-mvn</artifactId>
+            <version>${exam.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.ops4j.pax.url</groupId>
+            <artifactId>pax-url-aether</artifactId>
+            <version>${url.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.apache.felix</groupId>
+            <artifactId>org.apache.felix.framework</artifactId>
+            <version>4.4.1</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>javax</groupId>
+            <artifactId>javaee-api</artifactId>
+            <version>7.0</version>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.apache.felix</groupId>
             <artifactId>org.apache.felix.scr.ds-annotations</artifactId>
             <version>1.2.8</version>
             <scope>provided</scope>
         </dependency>
+
     </dependencies>
     <build>
         <resources>
@@ -302,17 +363,18 @@
                 </executions>
             </plugin>
             <plugin>
+                <!-- Separates the unit tests from the integration tests. -->
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-failsafe-plugin</artifactId>
-                <version>2.16</version>
-                <executions>
-                    <execution>
-                        <id>default-integration-test</id>
-                        <goals>
-                            <goal>integration-test</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>2.18</version>
+                <configuration>
+                    <!-- Show 100% of the lines from the stack trace (doesn't work) -->
+                    <trimStackTrace>false</trimStackTrace>
+                    <excludes>
+                        <!-- Exclude integration tests within (unit) test phase. -->
+                        <exclude>**/IT/*.java</exclude>
+                    </excludes>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.felix</groupId>
@@ -327,6 +389,26 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>2.18</version>
+                <configuration>
+                    <includes>
+                        <include>**/IT/*.java</include>
+                    </includes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>verify</id>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
         </plugins>
     </build>
     <reporting>
@@ -348,7 +430,12 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-report-plugin</artifactId>
-                <version>2.6</version>
+                <version>2.18</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-report-plugin</artifactId>
+                <version>2.18</version>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
@@ -402,7 +489,7 @@
                         <artifactId>site-maven-plugin</artifactId>
                         <version>0.10</version>
                         <configuration>
-                            <message>Creating site for ${project.version}</message>
+                            <message>Creating site for ${project.version}-${buildNumber}</message>
                         </configuration>
                         <executions>
                             <execution>

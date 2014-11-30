@@ -24,29 +24,12 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 
 /**
- *
+ * Created by cortiz on 9/10/14.
  */
-public class SampleServlet extends HttpServlet {
-
-
-    public static final String SEND_TEXT = "Hello from Servlet";
-    public static final String ENCODING = "utf-8";
-    public static final String CONTENT_TYPE = "text/plain;charset=" + ENCODING;
-    private final String message;
-
-    public SampleServlet(final String message) {
-        this.message = message;
-    }
-
-    public SampleServlet() {
-        this.message = SEND_TEXT;
-    }
+public class SampleServlet2 extends SampleServlet {
 
     @Override
     protected void doGet(final HttpServletRequest req, final HttpServletResponse resp) throws ServletException, IOException {
-        resp.setStatus(HttpServletResponse.SC_OK);
-        resp.setHeader("Accept-Charset", ENCODING);
-        resp.setContentType(CONTENT_TYPE);
-        resp.getWriter().write(SEND_TEXT);
+
     }
 }

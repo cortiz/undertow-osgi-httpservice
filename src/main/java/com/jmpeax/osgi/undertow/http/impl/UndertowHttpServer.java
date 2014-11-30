@@ -17,11 +17,14 @@
 
 package com.jmpeax.osgi.undertow.http.impl;
 
+import com.jmpeax.osgi.undertow.http.api.UndertowOSGi;
+import io.undertow.Handlers;
 import io.undertow.Undertow;
 import io.undertow.server.handlers.PathHandler;
 import io.undertow.servlet.Servlets;
 import io.undertow.servlet.api.*;
 import io.undertow.servlet.util.ImmediateInstanceHandle;
+import org.apache.commons.collections4.MapUtils;
 import org.osgi.framework.BundleException;
 import org.osgi.service.http.NamespaceException;
 import org.slf4j.Logger;
@@ -31,6 +34,7 @@ import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import java.util.Dictionary;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -78,33 +82,51 @@ public class UndertowHttpServer {
         if (registeredPaths.contains(url)) {
             throw new NamespaceException("Url " + url + " already Exist");
         }
-        DeploymentInfo servletBuilder = initServetHandler(url, servlet.getClass().getClassLoader());
-
+        DeploymentInfo servletBuilder = initServletHandler(url, servlet.getClass().getClassLoader());
         final ServletInfo tobeAdd = Servlets.servlet(url, servlet.getClass(), new InstanceFactory<Servlet>() {
             // OSGi already provides the instance!
             @Override
             public InstanceHandle<Servlet> createInstance() throws InstantiationException {
-                return new ImmediateInstanceHandle<Servlet>(servlet);
+                return new ImmediateInstanceHandle<>(servlet);
             }
         });
-        tobeAdd.addMapping("/*");
-        servletBuilder.setContextPath(url);
-        servletBuilder.setDeploymentName("TEST");
-        servletBuilder.addServlet(tobeAdd);
-        final DeploymentManager manager = Servlets.defaultContainer().addDeployment(servletBuilder);
+
+        buildAndDeploy(url, servletBuilder, tobeAdd, props);
+    }
+
+    public void addServletHandler(final String url, final Class<? extends Servlet> servlet,
+                                  final Dictionary<String, ?> props) throws ServletException {
+        DeploymentInfo servletBuilder = initServletHandler(url, servlet.getClassLoader());
+        final ServletInfo tobeAdd = Servlets.servlet(url, servlet);
+        buildAndDeploy(url, servletBuilder, tobeAdd, props);
+
+    }
+
+    private void buildAndDeploy(final String url, final DeploymentInfo deploymentInfo, final ServletInfo servletInfo,
+                                final Dictionary<String, ?> properties) throws ServletException {
+
+        log.debug("Building Deployment for {} {}", url, servletInfo.getName());
+        final Map<String, ?> internalConfig = Util.valueOf(properties);
+
+        String servletMapping = MapUtils.getString(internalConfig,
+                                                   UndertowOSGi.SERVLET_MAPPING, UndertowOSGi.DEFAULT_SERVLET_MAPPING);
+        String servletContextName = MapUtils.getString(internalConfig,
+                                                       UndertowOSGi.CONTEXT_NAME, UndertowOSGi.DEFAULT_CONTEXT_NAME);
+        log.debug("Servlet mapping for {} is {}", url, servletMapping);
+        log.debug("Context path will be {} for", servletContextName,url);
+
+        servletInfo.addMapping(servletMapping);
+        deploymentInfo.setContextPath(url);
+        deploymentInfo.setDeploymentName(servletContextName);
+        deploymentInfo.addServlet(servletInfo);
+        final DeploymentManager manager = Servlets.defaultContainer().addDeployment(deploymentInfo);
         manager.deploy();
-        pathHandler.addExactPath(url, manager.start());
+        pathHandler.addPrefixPath(url,manager.start());
         log.debug("Servlet {} was added", url);
         registeredPaths.add(url);
     }
 
-    public void addServletHandler(final String url, final Class<? extends Servlet> servlet,
-                                  final Dictionary<String, ?> props) {
-        DeploymentInfo servletBuilder = initServetHandler(url, servlet.getClassLoader());
-        Servlets.servlet(url, servlet);
-    }
-
-    protected DeploymentInfo initServetHandler(final String url, ClassLoader classloader) {
+    protected DeploymentInfo initServletHandler(final String url, ClassLoader classloader) {
         DeploymentInfo servletBuilder = Servlets.deployment();
         servletBuilder.setClassLoader(classloader);
         servletBuilder.setContextPath(url);
@@ -112,7 +134,7 @@ public class UndertowHttpServer {
     }
 
     public void removeHandler(final String path) {
-        pathHandler.removeExactPath(path);
+        pathHandler.removePrefixPath(path);
         registeredPaths.remove(path);
         log.debug("{} was remove from server", path);
     }
