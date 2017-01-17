@@ -176,8 +176,7 @@ public class UndertowHttpServerImplTest {
         testServer.startServer();
     }
 
-    @Test(dependsOnMethods = "testDefaultProperties", expectedExceptions = HttpHostConnectException.class,
-            expectedExceptionsMessageRegExp = ".* failed: Connection refused")
+    @Test(dependsOnMethods = "testDefaultProperties", expectedExceptions = HttpHostConnectException.class)
     public void testStopServer() throws Exception {
         UndertowHttpServer testServer = new UndertowHttpServer((Dictionary) goodProperties);
         testServer.startServer();
